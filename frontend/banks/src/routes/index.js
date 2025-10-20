@@ -2,15 +2,18 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginUI from "../components/LoginUI";
 import RegisterAdmin from "../components/RegisterAdmin";
+import VerifyOtp from "../components/VerifyOtp";
+import AdminHomePage from "../components/AdminHomePage";
 
 
 const AppRoutes = () => {
     return (
         <BrowserRouter>
             <Routes>
+                <Route path="/admin-home-dashboard" element={<AdminHomePage />} />
+                <Route path="/verify-otp" element={<VerifyOtp />} />
                 <Route path="/login" element={<LoginUI />} />
                 <Route path="/" element={<RegisterAdmin />} />
-
 
                 {/* Public routes */}
                 {/* <Route path="/otp-screen" element={<OtpScreen />} /> */}

@@ -1,9 +1,16 @@
 import React, { useState } from "react";
-import { useAppSelector } from "../store/store";
+import { useAppDispatch, useAppSelector } from "../store/store";
 import { RegisterUser } from "../api/auth/ApiServices"; // your API function
+import { setRegister } from "../store/slice/authSlice";
+import { useNavigate } from "react-router-dom";
+
 
 export default function RegisterAdmin() {
-    const isLoggedIn = useAppSelector((state) => state.auth);
+    const navigate = useNavigate();
+
+    const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
+    const dispatch = useAppDispatch();
+
     console.log("Register Admin - isLoggedIn:", isLoggedIn);
 
     const [form, setForm] = useState({ username: "", password: "" });
@@ -27,7 +34,11 @@ export default function RegisterAdmin() {
 
         try {
             const response = await RegisterUser(payload); // adjust API call
+            dispatch(setRegister(response));
+
             setMessage(response.message || "SuperAdmin registered successfully!");
+            setTimeout(() => navigate("/login"), 1500);
+
         } catch (err) {
             setError(err.message || "Something went wrong");
         }
