@@ -10,7 +10,7 @@ const AppRoutes = () => {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/admin-home-dashboard" element={<AdminHomePage />} />
+                <Route path="/admin-homepage-dashboard" element={<AdminHomePage />} />
                 <Route path="/verify-otp" element={<VerifyOtp />} />
                 <Route path="/login" element={<LoginUI />} />
                 <Route path="/" element={<RegisterAdmin />} />
