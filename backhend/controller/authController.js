@@ -66,113 +66,120 @@ export const login = async (req, res) => {
 
         // console.log("isMatch", isMatch);
 
-        const token = jwt.sign(
+        const tempToken = jwt.sign(
             { username, role: "superadmin", id: admin._id },
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
 
-        // Generate OTP
-        // const otpCode = crypto.randomInt(100000, 999999).toString();
-        // Math.random()
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // define it here
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
         await OTP.create({
             username,
             otp: otpCode,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins  
         });
 
         return res.json({
             message: "Login successful, please verify OTP",
             otp: otpCode, // ❌ remove in production, send via email/SMS
             expiresAt,
-            token: token,
+            // token: token,
+            token: tempToken,
+            isVerified: false,
             success: true,
+            otpExpiry
         });
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 }
 
+// ===== VERIFY OTP =====
+// export const verifyOtp = async (req, res) => {
+//     try {
+//         const { username, otp } = req.body;
+//         if (!username || !otp)
+//             return res.status(400).json({ error: "username and otp required" });
 
-const superAdminLogin = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        // console.log("email", email, password);
+//         const user = await User.findOne({ username });
+//         if (!user) return res.status(400).json({ error: "User not found" });
+//         if (!user.otp || !user.otpExpiry)
+//             return res.status(400).json({ error: "No OTP requested" });
+//         if (user.otp !== otp) return res.status(400).json({ error: "Invalid OTP" });
+//         if (new Date() > user.otpExpiry) return res.status(400).json({ error: "OTP expired" });
 
-        const admin = await SuperAdmin.findOne({ email });
-        console.log("admin", admin);
-        if (!admin)
-            return res.status(404).json({ message: "Superadmin not found" });
+//         user.isVerified = true;
+//         user.otp = undefined;
+//         user.otpExpiry = undefined;
+//         await user.save();
 
-        // const isMatch = await bcrypt.compare(password, admin.password);
-        const isMatch = await bcrypt.compare(password, admin.password);
+//         const token = generateToken(user);
+//         req.session.role = user.role; // store role in session
+//         req.session.userId = user._id;
 
-        // console.log("isMatch", isMatch, password, admin.password);
-        if (!isMatch)
-            return res.status(401).json({ message: "Invalid credentials" });
-
-        // console.log("isMatch", isMatch);
-
-        const token = jwt.sign(
-            { email, role: "superadmin", id: admin._id },
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" }
-        );
-
-        // Generate OTP
-        const otpCode = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // define it here
-
-        await OTP.create({
-            email,
-            otp: otpCode,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins
-        });
-
-        return res.json({
-            message: "Login successful, please verify OTP",
-            otp: otpCode, // ❌ remove in production, send via email/SMS
-            expiresAt,
-            token: token,
-            success: true,
-        });
-    } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
-    }
-};
-
+//         res.json({ message: "OTP verified", token, role: user.role });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: "Server error" });
+//     }
+// };
 
 // ===== VERIFY OTP =====
 export const verifyOtp = async (req, res) => {
     try {
         const { username, otp } = req.body;
-        if (!username || !otp)
-            return res.status(400).json({ error: "username and otp required" });
 
-        const user = await User.findOne({ username });
-        if (!user) return res.status(400).json({ error: "User not found" });
-        if (!user.otp || !user.otpExpiry)
-            return res.status(400).json({ error: "No OTP requested" });
-        if (user.otp !== otp) return res.status(400).json({ error: "Invalid OTP" });
-        if (new Date() > user.otpExpiry) return res.status(400).json({ error: "OTP expired" });
+        // Check if JWT is provided in header
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ message: "No token provided" });
 
-        user.isVerified = true;
-        user.otp = undefined;
-        user.otpExpiry = undefined;
-        await user.save();
+        const token = authHeader.split(" ")[1];
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
 
-        const token = generateToken(user);
-        req.session.role = user.role; // store role in session
-        req.session.userId = user._id;
+        // Make sure token username matches request
+        if (decoded.username !== username)
+            return res.status(401).json({ message: "Token does not match user" });
 
-        res.json({ message: "OTP verified", token, role: user.role });
+        // Get latest OTP for this user
+        const otpRecord = await OTP.findOne({ username }).sort({ createdAt: -1 });
+        if (!otpRecord) return res.status(400).json({ message: "No OTP requested" });
+
+        // Check OTP and expiry
+        if (otpRecord.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+        if (new Date() > otpRecord.expiresAt) return res.status(400).json({ message: "OTP expired" });
+
+        // Mark SuperAdmin as verified
+        const admin = await SuperAdmin.findOne({ username });
+        if (!admin) return res.status(404).json({ message: "SuperAdmin not found" });
+        admin.isVerified = true;
+        await admin.save();
+
+        // Generate FINAL JWT after OTP verification
+        const finalToken = generateToken(admin);
+
+        // Save session
+        req.session.userId = admin._id;
+        req.session.role = admin.role;
+
+        res.json({
+            message: "OTP verified successfully",
+            token: finalToken,
+            role: admin.role,
+            isVerified: true
+        });
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Server error" });
+        res.status(500).json({ message: "Server error", error: err.message });
     }
 };
 
