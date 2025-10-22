@@ -163,6 +163,7 @@ export const verifyOtp = async (req, res) => {
         admin.isVerified = true;
         await admin.save();
 
+
         // Generate FINAL JWT after OTP verification
         const finalToken = generateToken(admin);
 
