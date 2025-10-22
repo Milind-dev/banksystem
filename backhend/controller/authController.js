@@ -47,56 +47,111 @@ export const register = async (req, res) => {
 };
 
 // ===== LOGIN =====
+// export const login = async (req, res) => {
+//     try {
+//         const { username, password } = req.body;
+//         console.log("username", username, password);
+
+//         const admin = await SuperAdmin.findOne({ username });
+//         console.log("admin", admin);
+//         if (!admin)
+//             return res.status(404).json({ message: "Superadmin not found" });
+
+//         // const isMatch = await bcrypt.compare(password, admin.password);
+//         const isMatch = await bcrypt.compare(password, admin.password);
+
+//         console.log("isMatch", isMatch, password, admin.password);
+//         if (!isMatch)
+//             return res.status(401).json({ message: "Invalid credentials" });
+
+//         // console.log("isMatch", isMatch);
+
+//         const tempToken = jwt.sign(
+//             { username, role: "superadmin", id: admin._id },
+//             process.env.JWT_SECRET,
+//             { expiresIn: "1h" }
+//         );
+
+//         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+//         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+//         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+//         await OTP.create({
+//             username,
+//             otp: otpCode,
+//             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins  
+//         });
+
+//         return res.json({
+//             message: "Login successful, please verify OTP",
+//             otp: otpCode, // ❌ remove in production, send via email/SMS
+//             expiresAt,
+//             // token: token,
+//             token: tempToken,
+//             isVerified: false,
+//             success: true,
+//             otpExpiry
+//         });
+//     } catch (err) {
+//         res.status(500).json({ message: "Server error", error: err.message });
+//     }
+// }
+
 export const login = async (req, res) => {
     try {
         const { username, password } = req.body;
         console.log("username", username, password);
 
-        const admin = await SuperAdmin.findOne({ username });
-        console.log("admin", admin);
+        // Find existing SuperAdmin
+        let admin = await SuperAdmin.findOne({ username });
         if (!admin)
             return res.status(404).json({ message: "Superadmin not found" });
 
-        // const isMatch = await bcrypt.compare(password, admin.password);
         const isMatch = await bcrypt.compare(password, admin.password);
-
-        console.log("isMatch", isMatch, password, admin.password);
         if (!isMatch)
             return res.status(401).json({ message: "Invalid credentials" });
 
-        // console.log("isMatch", isMatch);
-
+        // Create a temporary JWT for OTP verification
         const tempToken = jwt.sign(
             { username, role: "superadmin", id: admin._id },
             process.env.JWT_SECRET,
-            { expiresIn: "1h" }
+            { expiresIn: "10m" } // short-lived temp token
         );
 
+        // Generate OTP
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-        await OTP.create({
-            username,
-            otp: otpCode,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins  
-        });
+        // **Check if OTP record exists for this user**
+        let otpRecord = await OTP.findOne({ username }).sort({ createdAt: -1 });
+        if (otpRecord) {
+            // Update OTP if exists
+            otpRecord.otp = otpCode;
+            otpRecord.expiresAt = otpExpiry;
+            await otpRecord.save();
+        } else {
+            // Create OTP if it doesn't exist
+            await OTP.create({
+                username,
+                otp: otpCode,
+                expiresAt: otpExpiry,
+            });
+        }
 
         return res.json({
             message: "Login successful, please verify OTP",
-            otp: otpCode, // ❌ remove in production, send via email/SMS
-            expiresAt,
-            // token: token,
+            otp: otpCode, // remove in production, send via email/SMS
             token: tempToken,
-            isVerified: false,
+            isVerified: admin.isVerified, // true if already verified before
             success: true,
             otpExpiry
         });
+
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
-}
+};
 
 // ===== VERIFY OTP =====
 // export const verifyOtp = async (req, res) => {
