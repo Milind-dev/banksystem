@@ -161,12 +161,6 @@ export default function VerifyOtp() {
                     </button>
                 </p>
             </motion.div>
-            <div>
-                <button className="bg-red-600 text-white py-2 px-4 rounded-md" onClick={() => {
-                    sessionStorage.removeItem("session");
-                    window.location.href = "/";
-                }}>Logout</button>
-            </div>
         </motion.div>
     );
 }
