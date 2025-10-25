@@ -44,6 +44,7 @@ const initialState = {
     permissions: [],
     register: null,
     login: null,
+
 };
 
 const authSlice = createSlice({
@@ -58,6 +59,10 @@ const authSlice = createSlice({
             state.isLoggedIn = !!action.payload;
             state.tokens = action.payload.data.tokens || null
         },
+        setVerifyotp: (state, action) => {
+            state.isVerified = true;
+            state.tokens = action.payload || null;
+        },
         setRegister: (state, action) => {
             state.register = action.payload;
             state.isLoggedIn = false; // registration ≠ login
@@ -65,6 +70,6 @@ const authSlice = createSlice({
     },
 });
 
-export const { setUser, setLoginUser, setRegister } = authSlice.actions;
+export const { setUser, setLoginUser, setRegister, setVerifyotp } = authSlice.actions;
 
 export default authSlice.reducer;

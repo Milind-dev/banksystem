@@ -1,17 +1,25 @@
 
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { useAppSelector } from "../store/store";
+import { useAppDispatch, useAppSelector } from "../store/store";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { VerifyOtps } from "../api/auth/ApiServices.jsx";
+import { setVerifyotp } from "../store/slice/authSlice.js";
+import { decodeToken } from "../tokenExtract/tokenextract.js";
+// const storedtoken = useAppSelector((state) => state.auth.login?.data?.token);
+// console.log("storedtoken", storedOtp, isVerified, adminrole, data)
 
 export default function VerifyOtp() {
     const navigate = useNavigate();
-    const storedOtp = useAppSelector((state) => state.auth.login?.data?.otp);
-    // const storedtoken = useAppSelector((state) => state.auth.login?.data?.token);
+    const dispatch = useAppDispatch();
 
-    // console.log("storedtoken", storedtoken)
+    const data = useAppSelector((state) => state.auth.login?.data);
+    const storedOtp = useAppSelector((state) => state.auth.login?.data?.otp);
+    const isVerified = useAppSelector((state) => state.auth.login?.data?.isVerified);
+    const adminrole = useAppSelector((state) => state.auth.login?.data?.token);
+    const admindecodedToken = decodeToken(adminrole);
+    console.log("decodetoken", admindecodedToken);
     const [otp, setOtp] = useState(new Array(6).fill(""));
     const inputRefs = useRef([]);
 
@@ -50,8 +58,8 @@ export default function VerifyOtp() {
     };
 
 
-    var token = localStorage.getItem("token");
-    console.log("tokensss:", token, token?.length);
+    // var token = localStorage.getItem("token");
+    // console.log("tokensss:", token, token?.length);
 
     const handleSubmit = async () => {
         const enteredOtp = otp.join("");
@@ -70,11 +78,24 @@ export default function VerifyOtp() {
         };
         try {
             const verifydata = await VerifyOtps(payload);
-            // console.log("verifydata", verifydata.data); // <-- check actual data
+            console.log("verifydata", verifydata.data); // <-- check actual data
+            if (isVerified || admindecodedToken?.role === "superadmin") {
+                console.log(isVerified, admindecodedToken?.role);
+
+                dispatch(setVerifyotp(verifydata));
+                navigate("/admin-homepage-dashboard");
+                toast.success("OTP verified successfully!");
+            }
+            else {
+                console.log(isVerified, admindecodedToken?.role);
+                console.log("otp mismatch");
+            }
         }
         catch (err) {
             // console.log("error", err.response?.data || err.message);
             toast.error("Something went wrong");
+            console.log(isVerified, admindecodedToken?.role);
+            console.log("otp mismatch");
         }
     };
 
@@ -143,7 +164,7 @@ export default function VerifyOtp() {
             <div>
                 <button className="bg-red-600 text-white py-2 px-4 rounded-md" onClick={() => {
                     sessionStorage.removeItem("session");
-                    window.location.href = "/login";
+                    window.location.href = "/";
                 }}>Logout</button>
             </div>
         </motion.div>
