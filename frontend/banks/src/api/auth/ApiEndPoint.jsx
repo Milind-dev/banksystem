@@ -1,5 +1,7 @@
 export const GET_REGISTERED_USERS = "api/auth/register";
 export const GET_LOGIN = "api/auth/login";
+export const POST_VERIFY_OTP = "api/auth/verify-otp";
+
 // export const GET_USER = "api/getUsers";
 // export const GET_OTP = "api/superadmin/login";
 // export const GET_VERIFY_OTP = "/api/superadmin/verify-otp";

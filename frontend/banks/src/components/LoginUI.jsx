@@ -214,7 +214,7 @@ export default function LoginUI() {
             return;
         }
 
-        setLoading(true);
+        // setLoading(true);
         try {
             const payload = { username: form.username, password: form.password };
             const logindata = await LoginUser(payload);
@@ -223,13 +223,14 @@ export default function LoginUI() {
                 toast.error(logindata.error);
             } else {
                 dispatch(setLoginUser(logindata));
+                localStorage.setItem("token", logindata.data.token);
                 toast.success("Login successful!");
                 setTimeout(() => navigate("/verify-otp"), 1000);
             }
         } catch (err) {
             toast.error("Something went wrong");
         } finally {
-            setLoading(false);
+            // setLoading(false);
         }
     };
 

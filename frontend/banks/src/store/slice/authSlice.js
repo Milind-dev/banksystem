@@ -56,6 +56,7 @@ const authSlice = createSlice({
         setLoginUser: (state, action) => {
             state.login = action.payload;
             state.isLoggedIn = !!action.payload;
+            state.tokens = action.payload.data.tokens || null
         },
         setRegister: (state, action) => {
             state.register = action.payload;

@@ -4,16 +4,20 @@ import LoginUI from "../components/LoginUI";
 import RegisterAdmin from "../components/RegisterAdmin";
 import VerifyOtp from "../components/VerifyOtp";
 import AdminHomePage from "../components/AdminHomePage";
+import Layouts from "../Layout/Layouts";
 
 
 const AppRoutes = () => {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/admin-homepage-dashboard" element={<AdminHomePage />} />
+
                 <Route path="/verify-otp" element={<VerifyOtp />} />
-                <Route path="/login" element={<LoginUI />} />
-                <Route path="/" element={<RegisterAdmin />} />
+                <Route path="/" element={<LoginUI />} />
+                {/* <Route path="/" element={<RegisterAdmin />} /> */}
+                <Route element={<Layouts />}>
+                    <Route path="/admin-homepage-dashboard" element={<AdminHomePage />} />
+                </Route>
 
                 {/* Public routes */}
                 {/* <Route path="/otp-screen" element={<OtpScreen />} /> */}
