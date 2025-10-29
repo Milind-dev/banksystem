@@ -3,8 +3,16 @@ import rateLimit from "express-rate-limit";
 import User from "../models/Usermodel.js";
 import { generateToken } from "../utils/generateToken.js";
 import SuperAdmin from "../models/SuperAdmin.js";
+import userdb from "../models/userdb.js"
 import jwt from "jsonwebtoken";
 import OTP from "../models/OTP.js";
+import { MongoClient, ObjectId } from "mongodb";
+import session from "express-session";
+
+
+
+
+
 
 const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES || 10);
 
@@ -45,58 +53,6 @@ export const register = async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 };
-
-// ===== LOGIN =====
-// export const login = async (req, res) => {
-//     try {
-//         const { username, password } = req.body;
-//         console.log("username", username, password);
-
-//         const admin = await SuperAdmin.findOne({ username });
-//         console.log("admin", admin);
-//         if (!admin)
-//             return res.status(404).json({ message: "Superadmin not found" });
-
-//         // const isMatch = await bcrypt.compare(password, admin.password);
-//         const isMatch = await bcrypt.compare(password, admin.password);
-
-//         console.log("isMatch", isMatch, password, admin.password);
-//         if (!isMatch)
-//             return res.status(401).json({ message: "Invalid credentials" });
-
-//         // console.log("isMatch", isMatch);
-
-//         const tempToken = jwt.sign(
-//             { username, role: "superadmin", id: admin._id },
-//             process.env.JWT_SECRET,
-//             { expiresIn: "1h" }
-//         );
-
-//         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-//         const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-
-//         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-//         await OTP.create({
-//             username,
-//             otp: otpCode,
-//             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 mins  
-//         });
-
-//         return res.json({
-//             message: "Login successful, please verify OTP",
-//             otp: otpCode, // ❌ remove in production, send via email/SMS
-//             expiresAt,
-//             // token: token,
-//             token: tempToken,
-//             isVerified: false,
-//             success: true,
-//             otpExpiry
-//         });
-//     } catch (err) {
-//         res.status(500).json({ message: "Server error", error: err.message });
-//     }
-// }
 
 export const login = async (req, res) => {
     try {
@@ -153,35 +109,6 @@ export const login = async (req, res) => {
     }
 };
 
-// ===== VERIFY OTP =====
-// export const verifyOtp = async (req, res) => {
-//     try {
-//         const { username, otp } = req.body;
-//         if (!username || !otp)
-//             return res.status(400).json({ error: "username and otp required" });
-
-//         const user = await User.findOne({ username });
-//         if (!user) return res.status(400).json({ error: "User not found" });
-//         if (!user.otp || !user.otpExpiry)
-//             return res.status(400).json({ error: "No OTP requested" });
-//         if (user.otp !== otp) return res.status(400).json({ error: "Invalid OTP" });
-//         if (new Date() > user.otpExpiry) return res.status(400).json({ error: "OTP expired" });
-
-//         user.isVerified = true;
-//         user.otp = undefined;
-//         user.otpExpiry = undefined;
-//         await user.save();
-
-//         const token = generateToken(user);
-//         req.session.role = user.role; // store role in session
-//         req.session.userId = user._id;
-
-//         res.json({ message: "OTP verified", token, role: user.role });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Server error" });
-//     }
-// };
 
 // ===== VERIFY OTP =====
 export const verifyOtp = async (req, res) => {
@@ -222,15 +149,25 @@ export const verifyOtp = async (req, res) => {
         // Generate FINAL JWT after OTP verification
         const finalToken = generateToken(admin);
 
+        // console.log("dfksfljsd", req.session)
         // Save session
+        // or req.cookies["connect.sid"]
         req.session.userId = admin._id;
         req.session.role = admin.role;
+        // req.session.sessionID = req.sessionId
+        // console.log("sessionId1", req.session.sessionID);
+
 
         res.json({
             message: "OTP verified successfully",
             token: finalToken,
             role: admin.role,
-            isVerified: true
+            isVerified: true,
+            sessionuserid: req.session.userId,
+            sessionId: req.sessionID,
+            isVerified: admin.isVerified,
+            profilePic: admin.profilePic // send to frontend
+
         });
 
     } catch (err) {
@@ -238,6 +175,82 @@ export const verifyOtp = async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 };
+
+
+async function getUserIdFromSession(req) {
+    console.log("sessionId11111", req.sessionID);
+
+    const client = new MongoClient(process.env.MONGO_URI);
+    await client.connect();
+    const db = client.db(); // default DB from URI
+    const sessions = db.collection("sessions");
+
+    const allSessions = await sessions.find().toArray();
+
+    // Extract userIds from all session documents
+    const userIds = allSessions.map((doc) => {
+        const data = JSON.parse(doc.session);
+        return data.userId;
+    });
+
+    await client.close();
+
+    return userIds;
+}
+
+// Example usage
+
+export const uploadProfilePic = async (req, res) => {
+
+    try {
+        console.log("fsdfdsfds", req.session);
+
+        // const sessionId = req.sessionID; // or req.cookies["connect.sid"]
+        // console.log("sessionId1", sessionId);
+
+        // req.session.userId = admin.userId
+
+
+        // const userId = await getUserIdFromSession(sessionId);
+
+        const userId = await getUserIdFromSession(req);
+
+        console.log("upload userId:", userId);
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+        const admin = await SuperAdmin.findById(userId);
+        if (!admin) return res.status(404).json({ message: "SuperAdmin not found" });
+
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+        admin.profilePic = `/uploads/${req.file.filename}`;
+        await admin.save();
+
+        res.json({
+            message: "Profile picture uploaded successfully",
+            profilePic: admin.profilePic,
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+
+export const checksession = (req, res) => {
+    console.log("Checking session:", req.session.userId);
+
+    if (req.session.userId) {
+        return res.json({
+            loggedIn: true,
+            userId: req.session.userId,
+            role: req.session.role,
+        });
+    } else {
+        return res.status(401).json({ loggedIn: false });
+    }
+}
+
 
 // ===== GET SUPERADMIN DATA =====
 export const getSuperadminData = async (req, res) => {
@@ -251,28 +264,95 @@ export const getSuperadminData = async (req, res) => {
 };
 
 // ===== CREATE USER (BY SUPERADMIN) =====
-export const createUser = async (req, res) => {
+export const postCreateUser = async (req, res) => {
     try {
-        const { username, password, name } = req.body;
-        if (!username || !password || !name)
-            return res.status(400).json({ error: "username, password, name required" });
+        const { username, password, mobilenumber } = req.body;
+        if (!username || !password || !mobilenumber) {
+            return res.status(404).json({
+                error: "username  password mobilenumber are required"
+            })
+        }
 
-        const exists = await User.findOne({ username });
-        if (exists) return res.status(400).json({ error: "User already exists" });
+        //validate number 
+        if (!/^\d{10}$/.test(mobilenumber)) {
+            return res.status(400).json({ error: "Invalid phone number format" });
 
-        const hashed = await bcrypt.hash(password, 10);
-        const user = new User({
+        }
+
+        const userexists = await userdb.findOne({ username });
+        if (userexists) return res.status(409).json({ error: "username are exist" })
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = new userdb({
             username,
-            password: hashed,
-            name,
+            password: hashedPassword,
+            mobilenumber: mobilenumber,
             role: "user",
             isVerified: true
-        });
-        await user.save();
+        })
+        await newUser.save();
 
-        res.status(201).json({ message: "User created" });
+        return res.status(201).json({
+            message: "User created successfully",
+            user: {
+                // id: newUser._id,
+                username: newUser.username,
+                mobilenumber: newUser.mobilenumber,
+                role: newUser.role
+            }
+        });
     } catch (err) {
-        console.error(err);
+        console.error("CREATE USER ERROR:", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+
+};
+
+
+
+export const postUserLogin = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: "username and password required" });
+        }
+
+        const user = await userdb.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: "Invalid password" });
+        }
+
+        return res.status(200).json({
+            message: "Login successful",
+            user: {
+                id: user._id,
+                username: user.username,
+                mobilenumber: user.mobilenumber
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Server error" });
     }
 };
+
+
+
+
+export const logout = (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: "Logout failed" });
+        }
+        res.clearCookie("connect.sid");
+        res.json({ message: "Logged out successfully" });
+    });
+}

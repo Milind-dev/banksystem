@@ -5,6 +5,10 @@ import RegisterAdmin from "../components/RegisterAdmin";
 import VerifyOtp from "../components/VerifyOtp";
 import AdminHomePage from "../components/AdminHomePage";
 import Layouts from "../Layout/Layouts";
+import Profile from "../components/Profile";
+import UserAbout from "../components/UserAbout";
+import Transaction from "../components/Transaction";
+import Settlement from "../components/Settlement";
 
 
 const AppRoutes = () => {
@@ -16,7 +20,11 @@ const AppRoutes = () => {
                 <Route path="/" element={<LoginUI />} />
                 {/* <Route path="/" element={<RegisterAdmin />} /> */}
                 <Route element={<Layouts />}>
+                    <Route path="/user-about" element={<UserAbout />} />
                     <Route path="/admin-homepage-dashboard" element={<AdminHomePage />} />
+                    <Route path="/admin-homepage-dashboard/Profile" element={<Profile />} />
+                    <Route path="/transaction" element={<Transaction />} />
+                    <Route path="/settlement" element={<Settlement />} />
                 </Route>
 
                 {/* Public routes */}

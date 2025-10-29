@@ -4,15 +4,17 @@ import logo from "../assests/axis.png";
 import barula from "../assests/barula.png";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react"; // lightweight icon library
+import { useAppDispatch } from "../store/store";
 
 
 export default function Header() {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
     const menuRef = useRef(null);
-
-
     const toggleMenu = () => setIsOpen(!isOpen);
+    const dispatch = useAppDispatch();
+
+
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -64,7 +66,7 @@ export default function Header() {
                     onClick={toggleMenu}
                     src={barula}
                     alt="User Avatar"
-                    className="w-10 h-10 rounded-full cursor-pointer border border-gray-300 shadow-sm"
+                    className="w-10 h-10 mr-9 rounded-full cursor-pointer border border-gray-300 shadow-sm"
                 />
 
                 {/* Dropdown Menu */}
@@ -80,12 +82,13 @@ export default function Header() {
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
-                                    navigate("/profile");
+                                    navigate("/admin-homepage-dashboard/Profile");
                                 }}
                                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                             >
                                 Profile
                             </button>
+
                             <button
                                 onClick={() => {
                                     setIsOpen(false);

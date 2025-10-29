@@ -1,6 +1,10 @@
 export const GET_REGISTERED_USERS = "api/auth/register";
 export const GET_LOGIN = "api/auth/login";
 export const POST_VERIFY_OTP = "api/auth/verify-otp";
+export const POST_UPLOAD_PROFILE_PIC = "api/auth/upload-profile-pic";
+
+export const GET_CHECK_SESSION_ADMIN = "api/auth/check-session";
+
 
 // export const GET_USER = "api/getUsers";
 // export const GET_OTP = "api/superadmin/login";

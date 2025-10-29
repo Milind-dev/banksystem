@@ -60,6 +60,9 @@ export default function VerifyOtp() {
 
     // var token = localStorage.getItem("token");
     // console.log("tokensss:", token, token?.length);
+    // console.log({
+    //     Authorization: token ? `Bearer ${token}` : "No token",
+    // });
 
     const handleSubmit = async () => {
         const enteredOtp = otp.join("");
@@ -68,23 +71,22 @@ export default function VerifyOtp() {
             toast.error("Please enter a valid 6-digit OTP");
             return;
         }
-        // console.log({
-        //     Authorization: token ? `Bearer ${token}` : "No token",
-        // });
-
         const payload = {
             username: "superadmin",
             otp: enteredOtp,
         };
         try {
             const verifydata = await VerifyOtps(payload);
-            console.log("verifydata", verifydata.data); // <-- check actual data
             if (isVerified || admindecodedToken?.role === "superadmin") {
-                console.log(isVerified, admindecodedToken?.role);
-
                 dispatch(setVerifyotp(verifydata));
+                console.log("OTP verified successfully:", verifydata);
+                sessionStorage.setItem("session", JSON.stringify(verifydata?.data));
+                const sessionverify = sessionStorage.getItem("session");
+                const { isVerified, session } = JSON.parse(sessionverify);
+                console.log("sessionverify in VerifyOtp:", isVerified, session);
+                if (isVerified && session)
+                    toast.success("OTP verified successfully!");
                 navigate("/admin-homepage-dashboard");
-                toast.success("OTP verified successfully!");
             }
             else {
                 console.log(isVerified, admindecodedToken?.role);
@@ -92,7 +94,6 @@ export default function VerifyOtp() {
             }
         }
         catch (err) {
-            // console.log("error", err.response?.data || err.message);
             toast.error("Something went wrong");
             console.log(isVerified, admindecodedToken?.role);
             console.log("otp mismatch");

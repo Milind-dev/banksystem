@@ -44,6 +44,11 @@ const initialState = {
     permissions: [],
     register: null,
     login: null,
+    sessions: null,
+    profile: null,
+    username: null,
+    role: null,
+    userId: null
 
 };
 
@@ -62,14 +67,23 @@ const authSlice = createSlice({
         setVerifyotp: (state, action) => {
             state.isVerified = true;
             state.tokens = action.payload || null;
+            state.sessions = action.payload || null;
+            state.profile = action.payload || null;
         },
         setRegister: (state, action) => {
             state.register = action.payload;
             state.isLoggedIn = false; // registration ≠ login
         },
+        setprofile: (state, action) => {
+            state.profileimg = action.payload || null;
+        },
+        setadminprofile: (state, action) => {
+            state.decodeadmintoken = action.payload || null
+        }
+
     },
 });
 
-export const { setUser, setLoginUser, setRegister, setVerifyotp } = authSlice.actions;
+export const { setUser, setLoginUser, setRegister, setVerifyotp, setprofile, setadminprofile } = authSlice.actions;
 
 export default authSlice.reducer;

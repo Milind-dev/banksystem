@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, default: "user" },
     otp: String,
     otpExpiry: Date,
+    profilePic: { type: String, default: "/uploads/default-avatar.png" },
     isVerified: { type: Boolean, default: false }
 });
 
